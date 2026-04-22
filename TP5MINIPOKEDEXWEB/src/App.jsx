@@ -1,121 +1,135 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState, useEffect } from "react";
+import PokemonCard from "./components/PokemonCard";
+import "./App.css";
 
 function App() {
-  const [count, setCount] = useState(0)
+ const [pokemon, setPokemon] = useState(null);
+ const [nombre, setNombre] = useState("");
+ const [error, setError] = useState("");
+ const [loading, setLoading] = useState(false);
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+ const [lista, setLista] = useState([]);
+ const [loadingLista, setLoadingLista] = useState(false);
 
-      <div className="ticks"></div>
+ const [tipoFiltro, setTipoFiltro] = useState("nombre");
+ const [tipoSeleccionado, setTipoSeleccionado] = useState("fire");
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+ const buscarPokemon = async () => {
+   if (!nombre) {
+     setError("Escribí algo");
+     return;
+   }
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+   setLoading(true);
+   setError("");
+
+   try {
+     const res = await fetch(
+       `https://pokeapi.co/api/v2/pokemon/${nombre.toLowerCase()}`
+     );
+
+     if (!res.ok) {
+       throw new Error("No existe ese Pokémon");
+     }
+
+     const data = await res.json();
+     setPokemon(data);
+   } catch (err) {
+     setError(err.message);
+     setPokemon(null);
+   } finally {
+     setTimeout(() => {
+       setLoading(false);
+     }, 1500);
+   }
+ };
+
+ const obtenerLista = async () => {
+   setLoadingLista(true);
+
+   try {
+     const res = await fetch("https://pokeapi.co/api/v2/pokemon?limit=20");
+     const data = await res.json();
+
+     const detalles = await Promise.all(
+       data.results.map(async (p) => {
+         const res2 = await fetch(p.url);
+         return await res2.json();
+       })
+     );
+
+     setLista(detalles);
+   } catch (error) {
+     console.log(error);
+   } finally {
+     setTimeout(() => {
+       setLoadingLista(false);
+     }, 1500);
+   }
+ };
+
+ useEffect(() => {
+   obtenerLista();
+ }, []);
+
+ return (
+   <div className="container">
+     <h1>Mini Pokédex</h1>
+
+     <div className="buscador">
+       <input
+         type="text"
+         placeholder="Nombre o ID"
+         value={nombre}
+         onChange={(e) => setNombre(e.target.value)}
+       />
+       <button onClick={buscarPokemon}>Buscar</button>
+     </div>
+
+     {loading && <p className="loading">Cargando...</p>}
+     {error && <p className="error">{error}</p>}
+
+     {pokemon && <PokemonCard data={pokemon} />}
+
+     <h2>Lista de Pokémon</h2>
+
+     <div className="filtros">
+       <button onClick={() => setTipoFiltro("nombre")}>Por nombre</button>
+       <button onClick={() => setTipoFiltro("tipo")}>Por tipo</button>
+     </div>
+
+     {tipoFiltro === "tipo" && (
+       <select onChange={(e) => setTipoSeleccionado(e.target.value)}>
+         <option value="fire">fire</option>
+         <option value="water">water</option>
+         <option value="grass">grass</option>
+         <option value="bug">bug</option>
+         <option value="poison">poison</option>
+       </select>
+     )}
+
+     {loadingLista && <p className="loading">Cargando lista...</p>}
+
+     <div className="grid">
+       {lista
+         .filter((p) => {
+           if (tipoFiltro === "nombre") return true;
+           return p.types.some(
+             (t) => t.type.name === tipoSeleccionado
+           );
+         })
+         .sort((a, b) => {
+           if (tipoFiltro === "nombre") {
+             return a.name.localeCompare(b.name);
+           }
+           return 0;
+         })
+         .map((p) => (
+           <PokemonCard key={p.id} data={p} />
+         ))}
+     </div>
+   </div>
+ );
 }
 
-export default App
+export default App;
